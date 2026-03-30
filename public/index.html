@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineSnap</title>
+    <style>
+        body { background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .btn { width: 120px; height: 120px; border-radius: 50%; border: none; background: #e50914; color: white; font-size: 3rem; cursor: pointer; transition: 0.3s; }
+        .btn.active { transform: scale(1.2); box-shadow: 0 0 30px #e50914; }
+        #res { margin-top: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div id="status">Appuyez pour scanner</div>
+    <button class="btn" id="go">🎬</button>
+    <div id="res"></div>
+
+    <script>
+        const go = document.getElementById('go');
+        go.onclick = async () => {
+            go.classList.add('active');
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+            const recorder = new MediaRecorder(stream);
+            let chunks = [];
+            recorder.ondataavailable = (e) => chunks.push(e.data);
+            recorder.onstop = async () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const fd = new FormData();
+                fd.append('file', blob, 'vid.webm');
+
+                const r = await fetch('/api/identify', { method: 'POST', body: fd });
+                const d = await r.json();
+                document.getElementById('res').innerText = d.status === "success" ? `Film : ${d.title}` : "Non trouvé";
+                go.classList.remove('active');
+                stream.getTracks().forEach(t => t.stop());
+            };
+            recorder.start();
+            setTimeout(() => recorder.stop(), 7000);
+        };
+    </script>
+</body>
+</html>
